@@ -1,4 +1,5 @@
 # Parking Space Monitoring System utilizing YOLO11 Object Detection
+pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple -r requirements.txt
 
 ## Overview
 This project demonstrates a Parking Space Monitoring System powered by YOLO11, an advanced deep learning-based object detection model. The system automatically detects and monitors parking spaces in real-time using a camera feed, providing accurate identification of vacant and occupied spots. It leverages the power of YOLO11 for high-speed and high-accuracy object detection, ensuring reliable results even in dynamic environments.
