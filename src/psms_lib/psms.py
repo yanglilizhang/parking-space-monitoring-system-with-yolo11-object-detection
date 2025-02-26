@@ -13,7 +13,7 @@ def check_exist_file(file_path):
 
 def extract_data_from_file(file_path):
     check_exist_file(file_path)
-    
+
     # Read the contents of the file
     with open(file_path, 'r') as file:
         text = file.read()
@@ -58,9 +58,13 @@ def extract_data_from_file(file_path):
 
 def draw_polylines_zones(image, data, linesColor=(0, 255, 0), txtColor=(0, 0, 255), fontScale=0.65, thickness=2):
     """Draw polygons (zones) on an image."""
+    # 遍历数据字典，其中key是标识符，points是一组坐标点
     for key, points in data.items():
+        # 将坐标点转换为numpy数组，并指定数据类型为32位整型
         points_array = np.array(points, dtype=np.int32)
+        # 在图像上绘制多边形线条，将每个坐标点集封闭起来
         cv2.polylines(image, [points_array], isClosed=True, color=linesColor, thickness=2)
+        # 计算坐标点集的质心，通过沿轴0（行）计算平均值并转换为整型
         centroid = np.mean(points_array, axis=0).astype(int)
         cv2.putText(image, f"{key}", tuple(centroid), cv2.FONT_HERSHEY_SIMPLEX, fontScale, txtColor, thickness)
     return image
@@ -80,57 +84,77 @@ def display_info(frame, number_of_zones, zones_list, color=(255, 255, 255), font
         )
     return frame
 
+
 def check_camera(cap):
     """Check if the camera is opened successfully."""
     if not cap.isOpened():
         raise TypeError("Cannot open camera.")
 
+
 def track_objects_in_zones(frame, boxes, zones, zones_list, class_list):
     """Track detected objects in defined zones."""
     if frame is None:
         return [frame, zones_list]
-    
+
     if len(zones) == 0:
         for idx, box in enumerate(boxes):
+            # 解包检测框的坐标、置信度分数、类别信息
             x1, y1, x2, y2, conf_score, cls = box
+            # 将坐标转换为整数，可能是因为图像处理通常需要整数坐标
             x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+            # 格式化置信度分数，保留两位小数，以提高可读性
             conf_score = "%.2f" % conf_score
             cls_center_x = int(x1 + x2) // 2
             cls_center_y = int(y1 + y2) // 2
+            # 将中心点坐标打包成一个元组
             cls_center_pnt = (cls_center_x, cls_center_y)
+            # 在图像帧上显示对象的信息，包括检测框、类别、置信度分数和中心点
             frame = display_object_info(frame, x1, y1, x2, y2, cls, conf_score, class_list, cls_center_pnt)
         return [frame, zones_list]
 
     for idx, box in enumerate(boxes):
+        # [     766.87      486.86      863.19      567.92     0.74207           2]
+        print("----->track_objects_in_zones box:", box)
         x1, y1, x2, y2, conf_score, cls = box
         x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
         conf_score = "%.2f" % conf_score
         cls_center_x = int(x1 + x2) // 2
         cls_center_y = int(y1 + y2) // 2
         cls_center_pnt = (cls_center_x, cls_center_y)
+        # 遍历所有的区域，其中zone_indx是区域索引，zone是区域的坐标范围
         for zone_indx, zone in enumerate(zones.values()):
+            # 检查当前对象的中心点是否在当前区域内 # 将坐标点转换为numpy数组，并指定数据类型为32位整型
             if cv2.pointPolygonTest(np.array(zone, dtype=np.int32), cls_center_pnt, False) == 1:
+                # 如果对象中心点在区域内，则在当前帧上显示对象的信息
                 frame = display_object_info(frame, x1, y1, x2, y2, cls, conf_score, class_list, cls_center_pnt)
+                # 将当前对象的类别添加到该区域的类别列表中
                 zones_list[zone_indx].append(class_list[int(cls)])
+                # 找到一个区域后即停止搜索，避免重复计数
                 break
     return [frame, zones_list]
+
 
 def display_object_info(frame, x1, y1, x2, y2, cls, conf_score, class_list, cls_center_pnt):
     """Draw object information (bounding box, class, and confidence score) on the frame."""
     cv2.circle(img=frame, center=cls_center_pnt, radius=0, color=(255, 100, 255), thickness=5)
     cv2.rectangle(img=frame, pt1=(x1, y1), pt2=(x2, y2), color=(255, 100, 100), thickness=2)
-    cv2.putText(img=frame, text=f"{class_list[int(cls)]} {conf_score}%", org=(x1, y1), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75, color=(255, 255, 255), thickness=2)
+    cv2.putText(img=frame, text=f"{class_list[int(cls)]} {conf_score}%", org=(x1, y1),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75, color=(255, 255, 255), thickness=2)
     return frame
+
 
 def init_zone_list(number_of_zones):
     """Initialize an empty list for each zone."""
+    # 如果 number_of_zones 为3，则返回 [[], [], []]
     return [[] for _ in range(number_of_zones)]
+
 
 def load_camera(video_source):
     """Load camera from video source."""
     captured = cv2.VideoCapture(video_source)
     check_camera(captured)
     return captured
+
 
 def get_prediction_boxes(frame, yolo_model, confidence):
     """Get prediction boxes from the YOLO model."""
@@ -139,6 +163,7 @@ def get_prediction_boxes(frame, yolo_model, confidence):
     boxes = results.boxes.data.numpy()
     return boxes
 
+
 def show_frame(frame, frame_name, wait_key=1, ord_key='q'):
     """Display a frame using OpenCV."""
     cv2.imshow(frame_name, frame)
@@ -146,32 +171,38 @@ def show_frame(frame, frame_name, wait_key=1, ord_key='q'):
         return False
     return True
 
+
 def count_occupied_space(number_of_zones, zones_list):
     count_occupied = 0
     for index in range(number_of_zones):
-        if zones_list[index]:
+        print("zones_list[index]:", zones_list[index])
+        # zones_list[index]: []
+        # zones_list[index]: ['car', 'truck']
+        # zones_list[index]: ['car']
+        if zones_list[index]:  # 如果区域不为空（即有车辆等占用）
             count_occupied += 1
     return count_occupied
+
 
 def display_zone_info(frame, data_to_display, color=(255, 255, 255), fontScale=0.75, thickness=2):
     number_of_zones = data_to_display["number_of_zones"]
     numb_of_occupied = data_to_display["numb_of_occupied"]
 
     cv2.putText(
-                frame,
-                f"vacant: {number_of_zones - numb_of_occupied}",
-                (25, 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale,
-                color,
-                thickness,
-            )
+        frame,
+        f"vacant: {number_of_zones - numb_of_occupied}",
+        (25, 25),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        fontScale,
+        color,
+        thickness,
+    )
     cv2.putText(
-                frame,
-                f"occupied: {numb_of_occupied}",
-                (25, 25 + 28),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale,
-                color,
-                thickness,
-            )
+        frame,
+        f"occupied: {numb_of_occupied}",
+        (25, 25 + 28),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        fontScale,
+        color,
+        thickness,
+    )
